@@ -1,8 +1,11 @@
-import sys, os, requests
+import os
+import requests
+import sys
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
 from PyQt5.QtWidgets import QLabel, QLineEdit
-from PyQt5.QtGui import QPixmap
 
 URL = "http://static-maps.yandex.ru/1.x"
 
@@ -10,6 +13,7 @@ class Example(QWidget):
     def __init__(self):
         super().__init__()
         self.initUI()
+        self.scale = 0
 
     def initUI(self):
         self.setGeometry(300, 300, 400, 400)
@@ -18,7 +22,7 @@ class Example(QWidget):
         self.btn = QPushButton('Сформировать карту', self)
         self.btn.resize(self.btn.sizeHint())
         self.btn.move(100, 100)
-        self.btn.clicked.connect(self.getImage)
+        self.btn.clicked.connect(self.setScale)
 
         self.label = QLabel(self)
         self.label.setText("Укажите координаты")
@@ -32,21 +36,24 @@ class Example(QWidget):
         self.longitude.move(170, 10)
         self.latitude = QLineEdit(self)
         self.latitude.move(170, 30)
-        self.scale = QLineEdit(self)
-        self.scale.move(170, 70)
+        self.edit_scale = QLineEdit(self)
+        self.edit_scale.move(170, 70)
 
         self.image = QLabel(self)
         self.image.move(5, 125)
         self.image.resize(390, 270)
 
+    def setScale(self):
+        self.scale = float(self.edit_scale.text())
+        self.getImage()
+
     def getImage(self):
         params = {
             "ll": f"{self.longitude.text()},{self.latitude.text()}",
-            "spn": f"{self.scale.text()},{self.scale.text()}",
+            "spn": f"{self.scale},{self.scale}",
             "l": "map",
             "size": "390,270"
         }
-        #?ll=140.530887,-29.003118&spn=30.002,30.002&l=sat&size=650,450"
         print(params)
         response = requests.get(URL, params=params)
 
@@ -62,12 +69,18 @@ class Example(QWidget):
 
         ## Изображение
         self.pixmap = QPixmap(self.map_file)
-
         self.image.setPixmap(self.pixmap)
 
     def closeEvent(self, event):
         """При закрытии формы подчищаем за собой"""
         os.remove(self.map_file)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_PageUp and self.scale > 0.3:
+            self.scale = round(self.scale - 0.3, 4)
+        elif event.key() == Qt.Key_PageDown and self.scale < 40:
+            self.scale = round(self.scale + 0.3, 4)
+        self.getImage()
 
 
 if __name__ == '__main__':
